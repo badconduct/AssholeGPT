@@ -1,0 +1,80 @@
+name: Test and publish
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+  packages: write
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npx playwright install --with-deps chromium
+      - run: npm run check:browser
+      - run: npm audit --omit=dev --audit-level=high
+      - name: Scan tracked source and history
+        run: |
+          bash scripts/install-gitleaks.sh
+          "$HOME/.local/bin/gitleaks" dir --no-banner --redact .
+          "$HOME/.local/bin/gitleaks" git --no-banner --redact .
+      - name: Build candidate
+        run: docker build --build-arg VCS_REF="$GITHUB_SHA" --build-arg SOURCE_URL="https://github.com/$GITHUB_REPOSITORY" -t assholegpt:test .
+      - name: Verify restricted runtime and persistent saves
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'docker rm -f assholegpt-smoke >/dev/null 2>&1 || true; docker volume rm assholegpt-smoke-data >/dev/null 2>&1 || true' EXIT
+          start() {
+            docker run -d --name assholegpt-smoke --read-only --cap-drop ALL \
+              --security-opt no-new-privileges:true --memory 256m --cpus 0.5 --pids-limit 64 \
+              -e AI_MODE=local -v assholegpt-smoke-data:/app/data \
+              -p 127.0.0.1:18084:3084 assholegpt:test
+            for attempt in {1..30}; do
+              if curl -fsS http://127.0.0.1:18084/healthz; then return; fi
+              sleep 1
+            done
+            return 1
+          }
+          export CHECK_URL=http://127.0.0.1:18084 CHECK_MODE=local SMOKE_STATE_FILE=/tmp/island-smoke.json
+          start
+          node scripts/smoke-check.js
+          docker rm -f assholegpt-smoke
+          start
+          node scripts/smoke-check.js --restore
+          docker exec assholegpt-smoke sh -c 'test "$(id -u)" = 1000 && test ! -e /app/.env'
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        if: github.event_name == 'push'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish verified image
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="ghcr.io/${GITHUB_REPOSITORY,,}:sha-${GITHUB_SHA}"
+          docker tag assholegpt:test "$image"
+          docker push "$image"
+          docker image inspect "$image" --format '{{index .RepoDigests 0}}' | tee image-digest.txt
+          cat image-digest.txt >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: github.event_name == 'push'
+        with:
+          name: image-digest
+          path: image-digest.txt

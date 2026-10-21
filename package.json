@@ -1,0 +1,13 @@
+{
+  "name": "assholegpt", "version": "1.0.0", "private": true,
+  "type": "module", "license": "GPL-3.0-only",
+  "description": "An ongoing island-camping President game for IE6 and Windows 98SE",
+  "engines": { "node": ">=22.9" },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "test": "node --test test/*.test.js",
+    "check": "node --check server.js && node --check public/client.js && npm test",
+    "check:browser": "node scripts/browser-check.js && node scripts/joker-browser-check.js && node scripts/turn-browser-check.js"
+  },
+  "devDependencies": { "acorn": "8.15.0", "playwright": "1.64.1" }
+}

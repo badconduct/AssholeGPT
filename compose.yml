@@ -1,0 +1,30 @@
+name: assholegpt
+services:
+  app:
+    build: .
+    image: assholegpt:local
+    init: true
+    restart: unless-stopped
+    environment:
+      AI_MODE: local
+      HOST: 0.0.0.0
+      PORT: "3084"
+      SAVE_DIR: /app/data/saves
+    ports:
+      - "127.0.0.1:3084:3084"
+    volumes:
+      - saves:/app/data
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 256m
+    cpus: 0.50
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
+volumes:
+  saves:
