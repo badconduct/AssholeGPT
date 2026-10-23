@@ -89,8 +89,8 @@ test('a final Joker is illegal, and leaving only Jokers forfeits the lowest uncl
   act(g,1,['4c']);assert.deepEqual(g.forfeits,[0,1]);assert.equal(g.players[1].role,'Vice Asshole');
   assert.equal(g.actor,2);assert.equal(g.phase,'playing');assert.deepEqual(g.order,[]);
   while(g.phase==='playing')act(g,g.actor,legalMoves(g)[0]||[]);
-  assert.deepEqual(g.order.slice(-2),[1,0]);assert.equal(g.players[0].score,0);assert.equal(g.players[1].score,1);
-  assert.equal(g.players.reduce((s,p)=>s+p.score,0),10);assert.deepEqual(g.players[0].cards,['Xb']);
+  assert.deepEqual(g.order.slice(-2),[1,0]);assert.equal(g.players[0].score,-2);assert.equal(g.players[1].score,-1);
+  assert.equal(g.players.reduce((s,p)=>s+p.score,0),0);assert.deepEqual(g.players[0].cards,['Xb']);
   const lone=table([['Xr'],['4c','4d'],['5c','5d'],['6c','6d'],['7c','7d']],{jokers:true});
   assert.deepEqual(legalMoves(lone),[]);assert.throws(()=>act(lone,0,['Xr']),/cannot finish on a Joker/);
 });
@@ -136,7 +136,7 @@ test('every combination of house rules completes repeated games with conserved d
         else {const d=await decision(g,seat,{mode:'local'});act(g,seat,d.cards);}
         conservation(g);
       }
-      assert.equal(g.players.reduce((s,p)=>s+p.score,0),round*count*(count-1)/2);
+      assert.equal(g.players.reduce((s,p)=>s+p.score,0),0);
       g=validateGame(JSON.parse(JSON.stringify(g)));assert.deepEqual(g.rules,rules);
       if(round<3){nextRound(g);if(g.phase==='exchange')exchangeCards(g,g.players[0].cards.slice(0,g.exchange.pairs.find(p=>p.high===0).count));}
     }

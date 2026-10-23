@@ -25,7 +25,7 @@ test('five through eight seats complete repeated rounds, conserve cards and cumu
       assert.equal(g.round,round);conserved(g);
       if(g.phase==='exchange'){const count=g.exchange.pairs.find(p=>p.high===0).count;exchangeCards(g,g.players[0].cards.slice(0,count));}
       playRound(g);assert.equal(g.order.length,n);assert.equal(new Set(g.order).size,n);
-      assert.equal(g.players.reduce((s,p)=>s+p.score,0),round*n*(n-1)/2);
+      assert.equal(g.players.reduce((s,p)=>s+p.score,0),0);
       assert.equal(g.players.reduce((s,p)=>s+p.wins,0),round);
       assert.equal(g.players[g.order[0]].role,'President');assert.equal(g.players[g.order[n-1]].role,'Asshole');
       if(round<25)nextRound(g);

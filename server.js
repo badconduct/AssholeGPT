@@ -64,10 +64,10 @@ export function createApp(config=configuration({}),{saveDir=process.env.SAVE_DIR
       if(!u.pathname.startsWith('/api/')){
         if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);return res.end();}
         const path=u.pathname==='/'?'/index.html':u.pathname;
-        if(!/^\/(?:index\.html|client\.js|style\.css|(?:images|portraits)\/[a-z0-9-]+\.jpg)$/.test(path)){res.writeHead(404);return res.end('Not found');}
+        if(!/^\/(?:index\.html|client\.js|style\.css|(?:images|portraits)\/[a-z0-9-]+\.(?:jpg|gif))$/.test(path)){res.writeHead(404);return res.end('Not found');}
         const data=await readFile(join(root,'public',path.slice(1)));
-        const ext=path.split('.').pop();res.setHeader('Content-Type',({html:'text/html; charset=utf-8',css:'text/css',js:'text/javascript',jpg:'image/jpeg'})[ext]);
-        if(ext==='jpg'){res.setHeader('Cache-Control','public, max-age=86400');res.setHeader('Expires',new Date(Date.now()+86400000).toUTCString());}
+        const ext=path.split('.').pop();res.setHeader('Content-Type',({html:'text/html; charset=utf-8',css:'text/css',js:'text/javascript',jpg:'image/jpeg',gif:'image/gif'})[ext]);
+        if(ext==='jpg'||ext==='gif'){res.setHeader('Cache-Control','public, max-age=86400');res.setHeader('Expires',new Date(Date.now()+86400000).toUTCString());}
         return res.end(req.method==='HEAD'?undefined:data);
       }
       s=getSession(req,res);res.setHeader('Content-Type','text/xml; charset=utf-8');

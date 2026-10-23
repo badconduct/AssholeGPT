@@ -29,6 +29,16 @@ var Island=(function(){
   function send(action,data){data=data||{};data.revision=revision;request('/api/'+action,data);}
   function suit(c){return {c:'&clubs;',d:'&diams;',h:'&hearts;',s:'&spades;'}[c.charAt(1)]||'';}
   function jokerImage(c,disabled,chosen){return '/images/joker-'+(c==='Xr'?'red':'black')+'-icon'+(disabled?'-inactive':chosen?'-selected':'')+'.jpg';}
+  function capScore(raw,exact){
+    var n=Number(raw),v,unit=0,units=['','k','m','b','t'],label,full,h,i,count;
+    if(!isFinite(n))n=0;v=Math.abs(n);full=(n>0?'+':'')+n.toFixed(0);
+    while(v>=1000&&unit<4){v/=1000;unit++;}
+    label=exact||unit===0?full:(n<0?'-':'+')+v.toFixed(1).replace(/\.0$/,'')+units[unit];
+    count=Math.min(3,Math.abs(n));
+    h='<span class="cap-score'+(n<0?' debt':'')+'" title="'+full+' bottle caps. '+(n<0?'Upside down':n>0?'Right side up':'No caps yet')+'. Stack is symbolic; the number is the total."><span class="cap-stack">';
+    for(i=0;i<count;i++)h+='<img src="/images/bottle-cap-'+(n<0?'down':'up')+'.gif" width="20" height="14" alt="" style="left:'+(i*3)+'px;top:'+(4-i*2)+'px">';
+    return h+'</span><span class="cap-total">'+esc(label)+'</span></span>';
+  }
   function canChoose(){
     return !!state&&!pending&&attr(state,'actor')==='0'&&(attr(state,'phase')==='playing'||attr(state,'phase')==='exchange')&&attr(state,'busy')!=='1'&&attr(state,'paused')!=='1'&&Number(attr(state,'revealMs'))<=0;
   }
@@ -80,7 +90,7 @@ var Island=(function(){
     h='<table class="seats" width="724" cellspacing="3" cellpadding="0"><tr>';
     for(i=0;i<players.length;i++){
       p=players[i];finish=attr(p,'finish');role=attr(p,'role');
-      h+='<td class="seat'+(i===actor&&phase==='playing'?' active':'')+(finish!=='0'?' finished':'')+'" title="'+esc(attr(p,'tag')+' - '+attr(p,'style'))+'"><img class="portrait" src="/portraits/'+attr(p,'id')+'.jpg" alt="'+esc(attr(p,'name'))+'"><div class="seatname">'+esc(attr(p,'name'))+'</div><div class="seatcount">'+attr(p,'count')+' <span>left</span></div><div class="seatrole">'+esc(role)+'</div><div class="seataction">'+(attr(p,'forfeit')==='1'?'Joker forfeit':finish!=='0'?'Finished #'+finish:attr(p,'passed')==='1'?'Passed':i===actor?'At the table':'In the round')+'</div></td>';
+      h+='<td class="seat'+(i===actor&&phase==='playing'?' active':'')+(finish!=='0'?' finished':'')+'" title="'+esc(attr(p,'tag')+' - '+attr(p,'style'))+'"><img class="portrait" src="/portraits/'+attr(p,'id')+'.jpg" alt="'+esc(attr(p,'name'))+'"><div class="seatname">'+esc(attr(p,'name'))+'</div><div class="seatcount">'+attr(p,'count')+' <span>left</span></div><div class="seatrole">'+esc(role)+'</div><div class="seataction">'+(attr(p,'forfeit')==='1'?'Joker forfeit':finish!=='0'?'Finished #'+finish:attr(p,'passed')==='1'?'Passed':i===actor?'At the table':'In the round')+'</div><div class="seatcaps">'+capScore(attr(p,'score'),false)+'</div></td>';
     }
     el('seats').innerHTML=h+'</tr></table>';
     h='';for(i=0;i<pc.length;i++)h+=card(text(pc[i]),false,false,false);
@@ -92,8 +102,8 @@ var Island=(function(){
     if(revealing&&result){var jokerSeat=Number(attr(result,'winner')),jokerName=attr(players[jokerSeat],'name'),jokerCode='Xb',jokerMatch;for(i=events.length-1;i>=0;i--){jokerMatch=/ plays (X[br])\.$/.exec(text(events[i]));if(jokerMatch){jokerCode=jokerMatch[1];break;}}el('jokerArt').src=jokerImage(jokerCode);el('jokerWinner').innerHTML=esc(jokerName)+(jokerSeat===0&&jokerName==='You'?' win':' wins')+' the pile!';el('turn').innerHTML='Joker! The next lead follows the announcement.';}
     el('handTitle').innerHTML=phase==='exchange'&&actor===0?'CHOOSE YOUR RETURN':'YOUR HAND';
     if(lines.length){var q=lines[lines.length-1],speaker=players[Number(attr(q,'seat'))];el('quote').innerHTML='<strong>'+esc(attr(q,'name'))+':</strong> '+esc(text(q));el('speaker').src='/portraits/'+attr(speaker,'id')+'.jpg';}
-    h='<table class="scoreboard"><tr><th>Friend</th><th>Current rank</th><th>Points</th><th>Presidencies</th></tr>';
-    for(i=0;i<players.length;i++){p=players[i];h+='<tr><td>'+esc(attr(p,'name'))+'</td><td>'+esc(attr(p,'role'))+'</td><td>'+attr(p,'score')+'</td><td>'+attr(p,'wins')+'</td></tr>';}el('scoreTable').innerHTML=h+'</table>';
+    h='<p class="fine">President +2 / Vice President +1 / Citizens 0 / Vice Asshole -1 / Asshole -2.<br>Right side up: positive. Upside down: negative. Caps cancel out; the number is your total. Scores stay with this table and its saves.</p><table class="scoreboard"><tr><th>Friend</th><th>Current rank</th><th>Bottle caps</th><th>Presidencies</th></tr>';
+    for(i=0;i<players.length;i++){p=players[i];h+='<tr><td>'+esc(attr(p,'name'))+'</td><td>'+esc(attr(p,'role'))+'</td><td>'+capScore(attr(p,'score'),true)+'</td><td>'+attr(p,'wins')+'</td></tr>';}el('scoreTable').innerHTML=h+'</table>';
     h='';for(i=1;i<players.length;i++){p=players[i];h+='<div class="bio"><strong>'+esc(attr(p,'name')+' - '+attr(p,'tag'))+'</strong><br>'+esc(attr(p,'bio'))+'</div>';}el('bios').innerHTML=h;
     var history=el('history'),atBottom=history.scrollHeight-history.scrollTop-history.clientHeight<24;
     h='';for(i=0;i<events.length;i++){h+='<div>'+esc(text(events[i]).replace(/\bXr\b/g,'JOKER (red)').replace(/\bXb\b/g,'JOKER (black)'))+'</div>';for(j=0;j<lines.length;j++)if(attr(lines[j],'id')===attr(events[i],'id'))h+='<div><em>'+esc(attr(lines[j],'name')+': '+text(lines[j]))+'</em></div>';}
