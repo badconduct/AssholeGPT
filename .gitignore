@@ -1,5 +1,14 @@
 node_modules/
 .env
+.env.*
+!.env.example
 data/
 artifacts/
+.review/
+backups/
 *.log
+*.bundle
+*.pem
+*.key
+*.pfx
+*.p12
